@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 
-export default function WeatherApp() {
+export default function Header() {
   const [input, setInput] = useState(""); // For weather input
   const [weather, setWeather] = useState({ loading: false, data: {}, error: false });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
