@@ -1,22 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 
-export default function CrowdfundingApp() {
+export default function WeatherApp() {
+  const [input, setInput] = useState(""); // For weather input
+  const [weather, setWeather] = useState({ loading: false, data: {}, error: false });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginDetails, setLoginDetails] = useState({ username: "", password: "", phone: "", otp: "" });
   const [generatedOTP, setGeneratedOTP] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpError, setOtpError] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [amount, setAmount] = useState("");
-  const [message, setMessage] = useState("");
-  const [contributors, setContributors] = useState([]);
-  const totalRaised = contributors.reduce((sum, c) => sum + c.amount, 0);
+  const [amount, setAmount] = useState(""); // For contribution amount
+  const [message, setMessage] = useState(""); // For contribution message
+  const [contributors, setContributors] = useState([]); // List of contributors
 
-  const validatePassword = (password) => {
-    const strongPasswordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
-    return strongPasswordRegex.test(password);
-  };
+  const validatePassword = (password) => /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/.test(password);
 
   const sendOTP = () => {
     if (loginDetails.phone.length === 10) {
@@ -30,15 +28,28 @@ export default function CrowdfundingApp() {
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!validatePassword(loginDetails.password)) {
       setPasswordError("Password must be at least 8 characters long, include a number and a special character.");
       return;
     }
     setPasswordError("");
-    if (generatedOTP && loginDetails.otp === generatedOTP) {
-      setIsLoggedIn(true);
+
+    if (generatedOTP && loginDetails.otp == generatedOTP) {
+      try {
+        const response = await fetch('http://localhost:3002/create-user', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(loginDetails)
+        });
+        const data = await response.json();
+        alert(data.message);
+        setIsLoggedIn(data.success);
+      } catch (err) {
+        console.error("Error connecting to the server:", err);
+        setIsLoggedIn(false);
+      }
     } else {
       setOtpError(true);
     }
@@ -50,6 +61,27 @@ export default function CrowdfundingApp() {
       setContributors([...contributors, { id: contributors.length + 1, amount: parseFloat(amount) }]);
       setMessage(`Thank you for contributing €${amount}!`);
       setAmount("");
+    }
+  };
+
+  // Weather Fetch Function
+  const fetchWeather = async () => {
+    if (!input) {
+      alert("Please enter a location!");
+      return;
+    }
+    setWeather({ loading: true, data: {}, error: false });
+
+    try {
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${input}&appid=YOUR_API_KEY&units=metric`);
+      const data = await response.json();
+      if (data.cod === 200) {
+        setWeather({ loading: false, data, error: false });
+      } else {
+        setWeather({ loading: false, data: {}, error: true });
+      }
+    } catch (err) {
+      setWeather({ loading: false, data: {}, error: true });
     }
   };
 
@@ -108,8 +140,31 @@ export default function CrowdfundingApp() {
         </div>
 
         <div className="mt-6">
-          <h2 className="text-xl font-semibold">Total Raised: €{totalRaised}</h2>
+          <h2 className="text-xl font-semibold">Total Raised: €{contributors.reduce((total, contributor) => total + contributor.amount, 0)}</h2>
         </div>
+
+        {/* Weather input and button */}
+        <div className="mt-8 w-full">
+          <input
+            type="text"
+            placeholder="Enter city for weather"
+            className="w-full p-3 border rounded-lg mb-4"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button onClick={fetchWeather} className="w-full bg-blue-500 text-white py-2 rounded-lg">Get Weather</button>
+        </div>
+
+        {/* Weather details */}
+        {weather.loading && <p className="mt-4">Loading...</p>}
+        {weather.error && <p className="mt-4 text-red-600">Error fetching weather data.</p>}
+        {weather.data.main && (
+          <div className="mt-4 text-white">
+            <h3 className="text-2xl font-bold">{weather.data.name}</h3>
+            <p>Temperature: {weather.data.main.temp}°C</p>
+            <p>Weather: {weather.data.weather[0].description}</p>
+          </div>
+        )}
       </motion.div>
     </div>
   );
